@@ -1,7 +1,6 @@
-edu-hry/
-└── escape-the-phasor/
+escape-the-phasor/
     └── index.html
-         <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="sk">
 <head>
   <meta charset="UTF-8" />
