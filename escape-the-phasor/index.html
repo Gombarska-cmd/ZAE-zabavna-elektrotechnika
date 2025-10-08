@@ -5,7 +5,7 @@ escape-the-phasor/
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Escape the Phasor – školská úniková hra (fix)</title>
+  <title>Escape the Phasor – školská úniková hra (v2)</title>
   <meta name="robots" content="noindex,nofollow" />
   <style>
     :root{--bg:#0b1020;--card:#0e1628;--edge:#1f2a44;--txt:#e5e7eb;--muted:#9aa4b2;--acc:#5b9cff;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444}
@@ -32,7 +32,8 @@ escape-the-phasor/
     .progress{height:10px;border-radius:999px;background:#0a1222;border:1px solid var(--edge);overflow:hidden;margin:12px 0}
     .bar{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#5b9cff)}
     .grid{display:grid;gap:18px}
-    .task{border:1px dashed var(--edge);border-radius:14px;padding:16px;background:rgba(8,13,26,.6)}
+    .task{border:1px dashed var(--edge);border-radius:14px;padding:16px;background:rgba(8,13,26,.6);position:relative}
+    .task.locked{opacity:.6}
     .task h3{margin:0 0 8px}
     .note{font-size:13px;color:#9aa4b2}
     .right{color:#22c55e}
@@ -41,6 +42,7 @@ escape-the-phasor/
     .footer{margin-top:18px;color:#8aa0bb;font-size:13px}
     .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0a1222;border:1px solid var(--edge);border-radius:8px;padding:2px 6px}
     canvas{width:100%;max-width:560px;height:220px;background:#081024;border:1px solid var(--edge);border-radius:12px}
+    .lockBadge{position:absolute;top:12px;right:12px;padding:4px 8px;border-radius:999px;border:1px solid var(--edge);background:#0a1222;font-size:12px}
   </style>
 </head>
 <body>
@@ -96,22 +98,53 @@ escape-the-phasor/
   const load = (k,def)=>{ try{ const v=JSON.parse(localStorage.getItem(k)); return v??def; }catch{ return def; } };
 
   // ====================== Definícia úloh ============================
+  // Tiering: 1-5 open, 6-9 unlock when first 5 solved, 10 unlock when first 9 solved
   const TASKS = [
-    { id:'u1', title:'Časový priebeh', text:'Máme u(t) = 325 · sin(2π·50·t). Urči okamžitú hodnotu u pri t = 3 ms. (V)', input:'number', placeholder:'napr. 263', tol:2, solve:(v)=> nearly(v, 325*Math.sin(2*Math.PI*50*0.003), 2), hint:'Použi u=Umax·sin(ωt), ω=2πf, t=0,003 s.' },
-    { id:'u2', title:'Maximálna hodnota', text:'Ak Uef = 230 V, urč Umax. (V)', input:'number', placeholder:'napr. 325', tol:1, solve:(v)=> nearly(v, 230*Math.SQRT2, 1), hint:'Umax = Uef·√2.' },
-    { id:'u3', title:'Efektívna hodnota', text:'Ak Umax = 10 V, urč Uef. (V)', input:'number', placeholder:'napr. 7.07', tol:0.05, solve:(v)=> nearly(v, 10/Math.SQRT2, 0.05), hint:'Uef = Umax/√2.' },
-    { id:'u4', title:'Stredná hodnota (usmernená)', text:'Pre jednocestne usmernené sínusové napätie platí Ustred ≈ 0,637·Umax. Ak Umax = 325 V, urč Ustred. (V)', input:'number', placeholder:'napr. 207', tol:2, solve:(v)=> nearly(v, 0.637*325, 2), hint:'Ustred = (2/π)·Umax ≈ 0,637·Umax.' },
-    { id:'u5', title:'Odpor R', text:'Vypočítaj odpor: U = 230 V, I = 2 A. R = ? (Ω)', input:'number', placeholder:'napr. 115', tol:0.5, solve:(v)=> nearly(v, 115, 0.5), hint:'R = U/I.' },
-    { id:'u6', title:'Induktívna reaktancia X_L', text:'Pre f = 50 Hz a L = 0,10 H urč X_L. (Ω)', input:'number', placeholder:'napr. 31.4', tol:0.5, solve:(v)=> nearly(v, 2*Math.PI*50*0.10, 0.5), hint:'X_L = ωL = 2πfL.' },
-    { id:'u7', title:'Kapacitná reaktancia X_C', text:'Pre f = 50 Hz a C = 100 µF urč X_C. (Ω)', input:'number', placeholder:'napr. 31.8', tol:0.5, solve:(v)=> nearly(v, 1/(2*Math.PI*50*100e-6), 0.5), hint:'X_C = 1/(ωC) = 1/(2πfC).' },
-    { id:'u8', title:'Impedancia Z', text:'V sériovom RLC platí R = 40 Ω, X_L = 30 Ω, X_C = 10 Ω. Urč Z. (Ω)', input:'number', placeholder:'napr. 44.7', tol:0.5, solve:(v)=> nearly(v, Math.sqrt(40**2 + (30-10)**2), 0.5), hint:'Z = √(R² + (X_L−X_C)²).' },
-    { id:'u9', title:'Ohmov zákon pre AC', text:'Pre I = 2 A a Z = 44,72 Ω urč U. (V)', input:'number', placeholder:'napr. 89.4', tol:0.6, solve:(v)=> nearly(v, 2*44.721359549995796, 0.6), hint:'U = I·Z.' },
-    { id:'u10', title:'Fázový posun (fázor)', text:'Pre sériový RLC s R = 40 Ω a (X_L−X_C) = 20 Ω nastav fázu napätia voči prúdu φ. (°)', type:'phasor', target: Math.atan2(20,40)*180/Math.PI, tol:2, hint:'φ = arctan((X_L − X_C)/R). Pre XL>XC je napätie VEDIE prúd (kladný uhol).' }
+    { id:'u1', tier:1, title:'Časový priebeh', text:'Máme u(t) = 325 · sin(2π·50·t). Urči okamžitú hodnotu u pri t = 3 ms. (V)',
+      input:'number', placeholder:'napr. 263', tol:2,
+      solve:(v)=> nearly(v, 325*Math.sin(2*Math.PI*50*0.003), 2), hint:'Použi u=Umax·sin(ωt), ω=2πf, t=0,003 s.' },
+    { id:'u2', tier:1, title:'Maximálna hodnota', text:'Ak Uef = 230 V, urč Umax. (V)',
+      input:'number', placeholder:'napr. 325', tol:1,
+      solve:(v)=> nearly(v, 230*Math.SQRT2, 1), hint:'Umax = Uef·√2.' },
+    { id:'u3', tier:1, title:'Efektívna hodnota', text:'Ak Umax = 10 V, urč Uef. (V)',
+      input:'number', placeholder:'napr. 7.07', tol:0.05,
+      solve:(v)=> nearly(v, 10/Math.SQRT2, 0.05), hint:'Uef = Umax/√2.' },
+    { id:'u4', tier:1, title:'Stredná hodnota (usmernená)', text:'Pre jednocestne usmernené sínusové napätie platí Ustred ≈ 0,637·Umax. Ak Umax = 325 V, urč Ustred. (V)',
+      input:'number', placeholder:'napr. 207', tol:2,
+      solve:(v)=> nearly(v, 0.637*325, 2), hint:'Ustred = (2/π)·Umax ≈ 0,637·Umax.' },
+    { id:'u5', tier:1, title:'Odpor R', text:'Vypočítaj odpor: U = 230 V, I = 2 A. R = ? (Ω)',
+      input:'number', placeholder:'napr. 115', tol:0.5,
+      solve:(v)=> nearly(v, 115, 0.5), hint:'R = U/I.' },
+
+    { id:'u6', tier:2, title:'Induktívna reaktancia X_L', text:'Pre f = 50 Hz a L = 0,10 H urč X_L. (Ω)',
+      input:'number', placeholder:'napr. 31.4', tol:0.5,
+      solve:(v)=> nearly(v, 2*Math.PI*50*0.10, 0.5), hint:'X_L = ωL = 2πfL.' },
+    { id:'u7', tier:2, title:'Kapacitná reaktancia X_C', text:'Pre f = 50 Hz a C = 100 µF urč X_C. (Ω)',
+      input:'number', placeholder:'napr. 31.8', tol:0.5,
+      solve:(v)=> nearly(v, 1/(2*Math.PI*50*100e-6), 0.5), hint:'X_C = 1/(ωC) = 1/(2πfC).' },
+    { id:'u8', tier:2, title:'Impedancia Z', text:'V sériovom RLC platí R = 40 Ω, X_L = 30 Ω, X_C = 10 Ω. Urč Z. (Ω)',
+      input:'number', placeholder:'napr. 44.7', tol:0.5,
+      solve:(v)=> nearly(v, Math.sqrt(40**2 + (30-10)**2), 0.5), hint:'Z = √(R² + (X_L−X_C)²).' },
+
+    { id:'u9', tier:2, title:'Ohmov zákon pre AC – fázory',
+      text:'Pre I = 2 A s počiatočnou fázou φ_I = −10° a sériový RLC: R=40 Ω, X_L=30 Ω, X_C=10 Ω.            Urči fázor napätia U = I·Z.            Zadaj <b>veľkosť</b> |U| (V) a <b>uhol</b> φ_U (°).',
+      type:'phasorSolve', magPlaceholder:'napr. 89.4', angPlaceholder:'napr. 16.6',
+      magTol:0.7, angTol:1.0,
+      // Correct values: |Z| = sqrt(40^2 + 20^2) = 44.721..., φZ = atan(20/40) ≈ 26.565°
+      // |U| = I*|Z| = 2 * 44.721... = 89.442...,  φU = φI + φZ = -10 + 26.565 = 16.565°
+      magTarget: 2*Math.sqrt(40*40 + (30-10)*(30-10)),
+      angTarget: (-10) + Math.atan2(30-10,40)*180/Math.PI,
+      hint:'|U| = I·|Z|, φ_U = φ_I + φ_Z, pričom φ_Z = arctan((X_L−X_C)/R).' },
+
+    { id:'u10', tier:3, title:'Fázový posun (fázor) – nastavenie',
+      text:'Pre sériový RLC s R = 40 Ω a (X_L−X_C) = 20 Ω nastav fázu napätia voči prúdu φ. (°)',
+      type:'phasor', target: Math.atan2(20,40)*180/Math.PI, tol:2,
+      hint:'φ = arctan((X_L − X_C)/R). Pre XL>XC je napätie VEDIE prúd (kladný uhol).' }
   ];
 
   // ====================== Stav hry ==================================
-  const STATE_KEY = 'phasor-escape-state-v1';
-  let state = load(STATE_KEY, { name:'', startAt:0, solved:{} });
+  const STATE_KEY = 'phasor-escape-state-v2';
+  let state = load(STATE_KEY, { name:'', startAt:0, solved:{}, savedVals:{} });
 
   function saveState(){ save(STATE_KEY, state); }
 
@@ -135,6 +168,10 @@ escape-the-phasor/
   }
   function stopTimer(){ if(tHandle) clearInterval(tHandle); }
 
+  function solvedCountUpToTier(tierMax){
+    return TASKS.filter(t=> t.tier<=tierMax && state.solved[t.id]).length;
+  }
+
   function updateProgress(){
     const done = Object.keys(state.solved).filter(k=> state.solved[k]).length;
     const pct = Math.round(100*done/TASKS.length);
@@ -148,27 +185,44 @@ escape-the-phasor/
   // ====================== Render úloh ===============================
   function renderTasks(){
     tasksWrap.innerHTML='';
+    const doneTier1 = solvedCountUpToTier(1);
+    const unlockTier2 = doneTier1 >= 5; // po 5 úlohách
+    const doneTier2 = TASKS.filter(t=> t.tier===2 && state.solved[t.id]).length;
+    const unlockTier3 = (unlockTier2 && (doneTier1 + doneTier2) >= 9);
+
     TASKS.forEach((t,i)=>{
-      const card = el('div',{class:'task', id:`task-${t.id}`});
-      const solved = !!state.solved[t.id];
+      let unlocked = t.tier===1 || (t.tier===2 && unlockTier2) || (t.tier===3 && unlockTier3);
+      const card = el('div',{class:'task'+(unlocked?'':' locked'), id:`task-${t.id}`});
       const h3 = el('h3',{}, `${i+1}. ${t.title}`);
       const p = el('p',{}, t.text);
       card.append(h3,p);
 
+      if(!unlocked){
+        const badge = el('div',{class:'lockBadge'}, (t.tier===2?'🔒 Dokonči prvých 5 úloh':'🔒 Dokonči prvých 9 úloh'));
+        card.append(badge);
+        tasksWrap.append(card);
+        return;
+      }
+
+      const solved = !!state.solved[t.id];
+
       if(t.type==='phasor'){
         const canvas = el('canvas',{id:`cv-${t.id}`});
-        const slider = el('input',{type:'range', min:'-90', max:'90', step:'0.1', value: solved? t.target.toFixed(1): '0'});
+        const slider = el('input',{type:'range', min:'-90', max:'90', step:'0.1', value: solved? t.target.toFixed(1): (state.savedVals[t.id]?.ang ?? '0')});
         const out = el('p',{class:'note'}, `Uhol φ: <b><span id="ang-${t.id}">${slider.value}</span>°</b>`);
         const btn = el('button',{id:`btn-${t.id}`}, 'Skontrolovať');
         const msg = el('p',{class:'note', id:`msg-${t.id}`}, '');
         card.append(canvas, slider, out, btn, msg);
 
-        try { drawPhasor(canvas, Number(slider.value)); } catch(e) { console.warn('Kreslenie zlyhalo:', e); }
+        try { drawPhasor(canvas, Number(slider.value)); } catch(e) {}
 
         slider.addEventListener('input',()=>{
           document.querySelector(`#ang-${t.id}`).textContent = slider.value;
-          try { drawPhasor(canvas, Number(slider.value)); } catch(e) { /* ignore */ }
+          state.savedVals[t.id] = {ang: slider.value}; saveState();
+          try { drawPhasor(canvas, Number(slider.value)); } catch(e) {}
         });
+
+        if(solved){ slider.value = t.target.toFixed(1); slider.disabled=true; btn.disabled=true; out.innerHTML = `Uhol φ: <b>${slider.value}°</b>`; msg.textContent='✅ Správne!'; msg.className='note right'; }
 
         btn.addEventListener('click',()=>{
           const ang = Number(slider.value);
@@ -176,27 +230,68 @@ escape-the-phasor/
             state.solved[t.id]=true; saveState();
             msg.textContent = '✅ Správne!'; msg.className='note right';
             slider.disabled=true; btn.disabled=true;
-            try { drawPhasor(canvas, t.target); } catch(e) { /* ignore */ }
-            updateProgress();
+            try { drawPhasor(canvas, t.target); } catch(e) {}
+            updateProgress(); renderTasks(); // refresh kvôli odomykaniu
           } else {
             msg.textContent = `❌ Ešte nie. Skús ±${t.tol}° okolo správnej hodnoty. Nápoveda: ${t.hint}`;
             msg.className='note wrong';
           }
         });
+
+      } else if(t.type==='phasorSolve'){
+        const row = el('div', {class:'row'});
+        const mag = el('input', {type:'number', step:'any', placeholder:t.magPlaceholder||'veľkosť (V)'});
+        const ang = el('input', {type:'number', step:'any', placeholder:t.angPlaceholder||'uhol (°)'});
+        const btn = el('button', {}, 'Skontrolovať');
+        const msg = el('p',{class:'note'}, '');
+        row.append(mag, ang); card.append(row, btn, msg);
+
+        if(state.savedVals[t.id]){
+          if(state.savedVals[t.id].mag!==undefined) mag.value = state.savedVals[t.id].mag;
+          if(state.savedVals[t.id].ang!==undefined) ang.value = state.savedVals[t.id].ang;
+        }
+
+        if(solved){
+          mag.value = t.magTarget.toFixed(3); ang.value = t.angTarget.toFixed(3);
+          mag.disabled=true; ang.disabled=true; btn.disabled=true; msg.textContent='✅ Správne!'; msg.className='note right';
+        }
+
+        btn.addEventListener('click', ()=>{
+          const vMag = Number(String(mag.value).replace(',','.'));
+          const vAng = Number(String(ang.value).replace(',','.'));
+          if(isNaN(vMag) || isNaN(vAng)){ msg.textContent='Zadaj obe hodnoty (veľkosť aj uhol).'; return; }
+          state.savedVals[t.id] = {mag: mag.value, ang: ang.value}; saveState();
+          const okMag = Math.abs(vMag - t.magTarget) <= (t.magTol||0.5);
+          const okAng = Math.abs(vAng - t.angTarget) <= (t.angTol||1);
+          if(okMag && okAng){
+            state.solved[t.id]=true; saveState();
+            msg.textContent='✅ Správne!'; msg.className='note right';
+            mag.disabled=true; ang.disabled=true; btn.disabled=true; updateProgress(); renderTasks();
+          } else {
+            let part = 'Nápoveda: ' + t.hint;
+            if(!okMag && okAng) part = 'Veľkosť ešte nesedí. ' + part;
+            if(okMag && !okAng) part = 'Uhol ešte nesedí. ' + part;
+            if(!okMag && !okAng) part = 'Nesedí veľkosť ani uhol. ' + part;
+            msg.textContent = '❌ ' + part; msg.className='note wrong';
+          }
+        });
+
       } else {
         const inp = el('input',{type:t.input||'text', placeholder:t.placeholder||''});
-        const btn = el('button',{id:`btn-${t.id}`}, 'Skontrolovať');
-        const msg = el('p',{class:'note', id:`msg-${t.id}`}, '');
-        if(solved){ inp.value = load(STATE_KEY, state).solvedVals?.[t.id] ?? ''; inp.disabled=true; btn.disabled=true; msg.textContent='✅ Správne!'; msg.className='note right'; }
+        const btn = el('button',{}, 'Skontrolovať');
+        const msg = el('p',{class:'note'}, '');
+        if(state.savedVals[t.id]) inp.value = state.savedVals[t.id];
+        if(solved){ inp.disabled=true; btn.disabled=true; msg.textContent='✅ Správne!'; msg.className='note right'; }
         card.append(inp, btn, msg);
 
         btn.addEventListener('click',()=>{
-          const val = inp.value.trim().replace(',', '.');
+          const val = (inp.value||'').trim().replace(',', '.');
           if(!val){ msg.textContent='Zadaj odpoveď.'; msg.className='note'; return; }
           const ok = t.solve(Number(val));
+          state.savedVals[t.id]=val; saveState();
           if(ok){
-            state.solved[t.id]=true; state.solvedVals = state.solvedVals||{}; state.solvedVals[t.id]=val; saveState();
-            msg.textContent='✅ Správne!'; msg.className='note right'; inp.disabled=true; btn.disabled=true; updateProgress();
+            state.solved[t.id]=true; saveState();
+            msg.textContent='✅ Správne!'; msg.className='note right'; inp.disabled=true; btn.disabled=true; updateProgress(); renderTasks();
           } else {
             msg.textContent = `❌ Nesprávne. Nápoveda: ${t.hint}`; msg.className='note wrong';
           }
@@ -230,7 +325,6 @@ escape-the-phasor/
   function arrow(ctx, x1,y1,x2,y2){
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
     const ang = Math.atan2(y2-y1, x2-x1); const len=10;
-    // FIX: správne použitie Math.PI
     ctx.beginPath();
     ctx.moveTo(x2,y2);
     ctx.lineTo(x2-len*Math.cos(ang-Math.PI/6), y2-len*Math.sin(ang-Math.PI/6));
@@ -259,6 +353,7 @@ escape-the-phasor/
     if(confirm('Vymazať uložený postup?')){ localStorage.removeItem(STATE_KEY); location.reload(); }
   });
 
+  // Auto-štart ak už je meno v localStorage
   if(state?.name){
     document.getElementById('player').value = state.name;
     document.getElementById('who').textContent = state.name;
