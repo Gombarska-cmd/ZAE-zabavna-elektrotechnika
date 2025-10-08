@@ -106,25 +106,25 @@ escape-the-phasor/
   const load = (k,def)=>{ try{ const v=JSON.parse(localStorage.getItem(k)); return v??def; }catch{ return def; } };
 
   const TASKS = [
-    { id:'u1', stage:1, title:'Časový priebeh', text:'u(t) = 325·sin(2π·50·t). Urči u pri t = 3 ms. (V)', input:'number', placeholder:'napr. 263', tol:2, solve:(v)=> nearly(v, 325*Math.sin(2*Math.PI*50*0.003), 2), hint:'u=Umax·sin(ωt), ω=2πf, t=0,003 s.' },
-    { id:'u2', stage:1, title:'Maximálna hodnota', text:'Uef = 230 V → urč Umax. (V)', input:'number', placeholder:'napr. 325', tol:1, solve:(v)=> nearly(v, 230*Math.SQRT2, 1), hint:'Umax = Uef·√2.' },
-    { id:'u3', stage:1, title:'Efektívna hodnota', text:'Umax = 10 V → urč Uef. (V)', input:'number', placeholder:'napr. 7.07', tol:0.05, solve:(v)=> nearly(v, 10/Math.SQRT2, 0.05), hint:'Uef = Umax/√2.' },
-    { id:'u4', stage:1, title:'Stredná hodnota', text:'Ustred ≈ 0,637·Umax. Ak Umax = 325 V → Ustred? (V)', input:'number', placeholder:'napr. 207', tol:2, solve:(v)=> nearly(v, 0.637*325, 2), hint:'Ustred = (2/π)·Umax.' },
-    { id:'u5', stage:1, title:'Odpor R', text:'U = 230 V, I = 2 A. R = ? (Ω)', input:'number', placeholder:'napr. 115', tol:0.5, solve:(v)=> nearly(v, 115, 0.5), hint:'R = U/I.' },
+    { id:'u1', stage:1, title:'Časový priebeh', text:'u(t) = 325·sin(2π·50·t). Urči u pri t = 3 ms. (V)', input:'number', placeholder:'napr. 123', tol:2, solve:(v)=> nearly(v, 325*Math.sin(2*Math.PI*50*0.003), 2), hint:'u=Umax·sin(ωt), ω=2πf, t=0,003 s.' },
+    { id:'u2', stage:1, title:'Maximálna hodnota', text:'Uef = 230 V → urč Umax. (V)', input:'number', placeholder:'napr. 123', tol:1, solve:(v)=> nearly(v, 230*Math.SQRT2, 1), hint:'Umax = Uef·√2.' },
+    { id:'u3', stage:1, title:'Efektívna hodnota', text:'Umax = 10 V → urč Uef. (V)', input:'number', placeholder:'napr. 1.23', tol:0.05, solve:(v)=> nearly(v, 10/Math.SQRT2, 0.05), hint:'Uef = Umax/√2.' },
+    { id:'u4', stage:1, title:'Stredná hodnota', text:'Ustred ≈ 0,637·Umax. Ak Umax = 325 V → Ustred? (V)', input:'number', placeholder:'napr. 123', tol:2, solve:(v)=> nearly(v, 0.637*325, 2), hint:'Ustred = (2/π)·Umax.' },
+    { id:'u5', stage:1, title:'Odpor R', text:'U = 230 V, I = 2 A. R = ? (Ω)', input:'number', placeholder:'napr. 123', tol:0.5, solve:(v)=> nearly(v, 115, 0.5), hint:'R = U/I.' },
 
-    { id:'u6', stage:2, title:'Induktívna reaktancia X_L', text:'f = 50 Hz, L = 0,10 H → X_L? (Ω)', input:'number', placeholder:'napr. 31.4', tol:0.5, solve:(v)=> nearly(v, 2*Math.PI*50*0.10, 0.5), hint:'X_L = 2πfL.' },
-    { id:'u7', stage:2, title:'Kapacitná reaktancia X_C', text:'f = 50 Hz, C = 100 µF → X_C? (Ω)', input:'number', placeholder:'napr. 31.8', tol:0.5, solve:(v)=> nearly(v, 1/(2*Math.PI*50*100e-6), 0.5), hint:'X_C = 1/(2πfC).' },
-    { id:'u8', stage:2, title:'Impedancia Z', text:'R = 40 Ω, X_L = 30 Ω, X_C = 10 Ω → Z? (Ω)', input:'number', placeholder:'napr. 44.7', tol:0.5, solve:(v)=> nearly(v, Math.sqrt(40**2 + (30-10)**2), 0.5), hint:'Z = √(R² + (X_L−X_C)²).' },
+    { id:'u6', stage:2, title:'Induktívna reaktancia X_L', text:'f = 50 Hz, L = 0,10 H → X_L? (Ω)', input:'number', placeholder:'napr. 12.3', tol:0.5, solve:(v)=> nearly(v, 2*Math.PI*50*0.10, 0.5), hint:'X_L = 2πfL.' },
+    { id:'u7', stage:2, title:'Kapacitná reaktancia X_C', text:'f = 50 Hz, C = 100 µF → X_C? (Ω)', input:'number', placeholder:'napr. 12.8', tol:0.5, solve:(v)=> nearly(v, 1/(2*Math.PI*50*100e-6), 0.5), hint:'X_C = 1/(2πfC).' },
+    { id:'u8', stage:2, title:'Impedancia Z', text:'R = 40 Ω, X_L = 30 Ω, X_C = 10 Ω → Z? (Ω)', input:'number', placeholder:'napr. 12.3', tol:0.5, solve:(v)=> nearly(v, Math.sqrt(40**2 + (30-10)**2), 0.5), hint:'Z = √(R² + (X_L−X_C)²).' },
 
     { id:'u9', stage:2, title:'Ohmov zákon pre AC – fázory',
       text:'I = 2 A s φ_I = −10°. R=40 Ω, X_L=30 Ω, X_C=10 Ω. Urči fázor U = I·Z. Zadaj |U| (V) a φ_U (°).',
-      type:'phasorSolve', magPlaceholder:'napr. 89.4', angPlaceholder:'napr. 16.6',
+      type:'phasorSolve', magPlaceholder:'napr. 12.3', angPlaceholder:'napr. 12.3',
       magTol:0.7, angTol:1.0,
       magTarget: 2*Math.sqrt(40*40 + (30-10)*(30-10)),
       angTarget: (-10) + Math.atan2(30-10,40)*180/Math.PI,
       hint:'|U| = I·|Z|, φ_U = φ_I + φ_Z, pričom φ_Z = arctan((X_L−X_C)/R).' },
 
-    { id:'u10', stage:3, title:'Fázor – nastavenie', text:'Pre sériový RLC s R = 40 Ω a (X_L−X_C) = 20 Ω nastav fázu U voči I (°).',
+    { id:'u10', stage:3, title:'Fázor – nastavenie', text:'Pre sériový RLC s R = 40 Ω a X = (X_L−X_C) = 20 Ω nastav fázový posun medzi U a I (°).',
       type:'phasor', target: Math.atan2(20,40)*180/Math.PI, tol:2, hint:'φ = arctan((X_L − X_C)/R). Kladné → U vedie I.' }
   ];
 
