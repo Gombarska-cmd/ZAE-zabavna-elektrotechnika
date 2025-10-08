@@ -1,4 +1,266 @@
 edu-hry/
 └── escape-the-phasor/
     └── index.html
-         
+         <!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Escape the Phasor – školská úniková hra</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    :root{--bg:#0b1020;--card:#0e1628;--edge:#1f2a44;--txt:#e5e7eb;--muted:#9aa4b2;--acc:#5b9cff;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:radial-gradient(1200px 800px at 20% 0%,#0e1830 0%,#0b1020 40%,#070b17 100%);color:var(--txt)}
+    .wrap{max-width:1000px;margin:0 auto;padding:24px}
+    .card{background:linear-gradient(180deg,rgba(18,27,48,.9),rgba(11,16,32,.9));border:1px solid var(--edge);border-radius:18px;padding:22px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+    h1{margin:0 0 8px;font-size:clamp(22px,3.2vw,36px)}
+    h2{margin:0 0 12px;font-size:clamp(18px,2.4vw,24px)}
+    p{color:var(--muted);line-height:1.6}
+    .row{display:grid;gap:18px}
+    @media (min-width:860px){.row{grid-template-columns:1fr 1fr}}
+    label{display:block;margin:10px 0 6px}
+    input,button,select{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--edge);background:#0a1222;color:var(--txt)}
+    input:focus,select:focus,button:focus{outline:2px solid var(--acc)}
+    button{background:var(--acc);border-color:var(--acc);font-weight:700;cursor:pointer}
+    button.secondary{background:transparent;border-color:var(--edge)}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .hidden{display:none}
+    .pill{display:inline-flex;gap:8px;align-items:center;font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid var(--edge);background:#0a1222;color:#cbd5e1}
+    .ok{border-color:#134e2a;background:rgba(34,197,94,.12);color:var(--txt)}
+    .err{border-color:#7f1d1d;background:rgba(239,68,68,.12)}
+    .progress{height:10px;border-radius:999px;background:#0a1222;border:1px solid var(--edge);overflow:hidden;margin:12px 0}
+    .bar{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#5b9cff)}
+    .grid{display:grid;gap:18px}
+    .task{border:1px dashed var(--edge);border-radius:14px;padding:16px;background:rgba(8,13,26,.6)}
+    .task h3{margin:0 0 8px}
+    .note{font-size:13px;color:#9fb0c3}
+    .right{color:#22c55e}
+    .wrong{color:#ef4444}
+    .center{text-align:center}
+    .footer{margin-top:18px;color:#8aa0bb;font-size:13px}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0a1222;border:1px solid var(--edge);border-radius:8px;padding:2px 6px}
+    canvas{width:100%;max-width:560px;height:220px;background:#081024;border:1px solid var(--edge);border-radius:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- ÚVODNÁ OBRAZOVKA -->
+    <section class="card" id="screen-welcome">
+      <h1>Escape the Phasor</h1>
+      <p>Virtuálna úniková hra o striedavých obvodoch. Prejdi 10 úloh od harmonického priebehu cez reaktanciu až po fázu <span class="kbd">U</span> a <span class="kbd">I</span>. Funguje v prehliadači – bez servera.</p>
+      <div class="row">
+        <div>
+          <label for="player">Meno / prezývka</label>
+          <input id="player" placeholder="napr. Janka" />
+          <button id="btnStart">Začať hru</button>
+          <p id="msgStart" class="footer"></p>
+        </div>
+        <div>
+          <p><b>Tip pre učiteľa:</b> stránka je označená <span class="kbd">noindex</span>, takže nie je vyhľadateľná. Postup hráča sa ukladá lokálne (localStorage).</p>
+          <button id="btnResetAll" class="secondary">Vymazať uložený postup</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- HRA -->
+    <section class="card hidden" id="screen-game">
+      <div class="row">
+        <div>
+          <h2 id="gameTitle">Laboratórium – 10 zámkov</h2>
+          <div class="progress"><div class="bar" id="bar"></div></div>
+          <p class="pill">Hráč: <span id="who">–</span> • Čas: <span id="timer">00:00</span></p>
+        </div>
+        <div class="center">
+          <button id="btnBack" class="secondary">Späť na úvod</button>
+        </div>
+      </div>
+
+      <div id="tasks" class="grid"></div>
+      <div id="finish" class="hidden center">
+        <h2>🎉 Únik sa podaril!</h2>
+        <p>Skvelé! Máš všetky zámky otvorené. Celkový čas: <b><span id="finalTime">–</span></b>.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+  // ====================== Pomocné funkcie ==========================
+  const $ = (s)=>document.querySelector(s);
+  const el = (tag, attrs={}, html='')=>{ const n=document.createElement(tag); Object.entries(attrs).forEach(([k,v])=> n.setAttribute(k,v)); if(html) n.innerHTML=html; return n; };
+  const fmtTime = (ms)=>{ const s=Math.floor(ms/1000); const m=Math.floor(s/60); const r=s%60; return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}` };
+  const nearly = (val, target, tol)=>(Math.abs(Number(val)-target) <= tol);
+  const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
+  const load = (k,def)=>{ try{ const v=JSON.parse(localStorage.getItem(k)); return v??def; }catch{ return def; } };
+
+  // ====================== Definícia úloh ============================
+  const TASKS = [
+    { id:'u1', title:'Časový priebeh', text:'Máme u(t) = 325 · sin(2π·50·t). Urči okamžitú hodnotu u pri t = 3 ms. (V)', input:'number', placeholder:'napr. 263', tol:2, solve:(v)=> nearly(v, 325*Math.sin(2*Math.PI*50*0.003), 2), hint:'Použi u=Umax·sin(ωt), ω=2πf, t=0,003 s.' },
+    { id:'u2', title:'Maximálna hodnota', text:'Ak Uef = 230 V, urč Umax. (V)', input:'number', placeholder:'napr. 325', tol:1, solve:(v)=> nearly(v, 230*Math.SQRT2, 1), hint:'Umax = Uef·√2.' },
+    { id:'u3', title:'Efektívna hodnota', text:'Ak Umax = 10 V, urč Uef. (V)', input:'number', placeholder:'napr. 7.07', tol:0.05, solve:(v)=> nearly(v, 10/Math.SQRT2, 0.05), hint:'Uef = Umax/√2.' },
+    { id:'u4', title:'Stredná hodnota (usmernená)', text:'Pre jednocestne usmernené sínusové napätie platí Ustred ≈ 0,637·Umax. Ak Umax = 325 V, urč Ustred. (V)', input:'number', placeholder:'napr. 207', tol:2, solve:(v)=> nearly(v, 0.637*325, 2), hint:'Ustred = (2/π)·Umax ≈ 0,637·Umax.' },
+    { id:'u5', title:'Odpor R', text:'Vypočítaj odpor: U = 230 V, I = 2 A. R = ? (Ω)', input:'number', placeholder:'napr. 115', tol:0.5, solve:(v)=> nearly(v, 115, 0.5), hint:'R = U/I.' },
+    { id:'u6', title:'Induktívna reaktancia X_L', text:'Pre f = 50 Hz a L = 0,10 H urč X_L. (Ω)', input:'number', placeholder:'napr. 31.4', tol:0.5, solve:(v)=> nearly(v, 2*Math.PI*50*0.10, 0.5), hint:'X_L = ωL = 2πfL.' },
+    { id:'u7', title:'Kapacitná reaktancia X_C', text:'Pre f = 50 Hz a C = 100 µF urč X_C. (Ω)', input:'number', placeholder:'napr. 31.8', tol:0.5, solve:(v)=> nearly(v, 1/(2*Math.PI*50*100e-6), 0.5), hint:'X_C = 1/(ωC) = 1/(2πfC).' },
+    { id:'u8', title:'Impedancia Z', text:'V sériovom RLC platí R = 40 Ω, X_L = 30 Ω, X_C = 10 Ω. Urč Z. (Ω)', input:'number', placeholder:'napr. 44.7', tol:0.5, solve:(v)=> nearly(v, Math.sqrt(40**2 + (30-10)**2), 0.5), hint:'Z = √(R² + (X_L−X_C)²).' },
+    { id:'u9', title:'Ohmov zákon pre AC', text:'Pre I = 2 A a Z = 44,72 Ω urč U. (V)', input:'number', placeholder:'napr. 89.4', tol:0.6, solve:(v)=> nearly(v, 2*44.721359549995796, 0.6), hint:'U = I·Z.' },
+    { id:'u10', title:'Fázový posun (fázor)', text:'Pre sériový RLC s R = 40 Ω a (X_L−X_C) = 20 Ω nastav fázu napätia voči prúdu φ. (°)', type:'phasor', target: Math.atan2(20,40)*180/Math.PI, tol:2, hint:'φ = arctan((X_L − X_C)/R). Pre XL>XC je napätie VEDIE prúd (kladný uhol).' }
+  ];
+
+  // ====================== Stav hry ==================================
+  const STATE_KEY = 'phasor-escape-state-v1';
+  let state = load(STATE_KEY, { name:'', startAt:0, solved:{} });
+
+  function saveState(){ save(STATE_KEY, state); }
+
+  // ====================== UI – štart a časovač ======================
+  const screenWelcome = $('#screen-welcome');
+  const screenGame = $('#screen-game');
+  const tasksWrap = $('#tasks');
+  const bar = $('#bar');
+  const who = $('#who');
+  const timerEl = $('#timer');
+  const finalTime = $('#finalTime');
+  let tHandle=null;
+
+  function startTimer(){
+    stopTimer();
+    tHandle = setInterval(()=>{
+      const now=Date.now();
+      if(!state.startAt) state.startAt=now;
+      timerEl.textContent = fmtTime(now - state.startAt);
+    }, 250);
+  }
+  function stopTimer(){ if(tHandle) clearInterval(tHandle); }
+
+  function updateProgress(){
+    const done = Object.keys(state.solved).filter(k=> state.solved[k]).length;
+    const pct = Math.round(100*done/TASKS.length);
+    bar.style.width = pct+"%";
+    if(done===TASKS.length){
+      $('#finish').classList.remove('hidden');
+      finalTime.textContent = fmtTime(Date.now()-state.startAt);
+    }
+  }
+
+  // ====================== Render úloh ===============================
+  function renderTasks(){
+    tasksWrap.innerHTML='';
+    TASKS.forEach((t,i)=>{
+      const card = el('div',{class:'task', id:`task-${t.id}`});
+      const solved = !!state.solved[t.id];
+      const h3 = el('h3',{}, `${i+1}. ${t.title}`);
+      const p = el('p',{}, t.text);
+      card.append(h3,p);
+
+      if(t.type==='phasor'){
+        const canvas = el('canvas',{id:`cv-${t.id}`});
+        const slider = el('input',{type:'range', min:'-90', max:'90', step:'0.1', value: solved? t.target.toFixed(1): '0'});
+        const out = el('p',{class:'note'}, `Uhol φ: <b><span id="ang-${t.id}">${slider.value}</span>°</b>`);
+        const btn = el('button',{id:`btn-${t.id}`}, 'Skontrolovať');
+        const msg = el('p',{class:'note', id:`msg-${t.id}`}, '');
+        card.append(canvas, slider, out, btn, msg);
+
+        slider.addEventListener('input',()=>{ document.querySelector(`#ang-${t.id}`).textContent = slider.value; drawPhasor(canvas, Number(slider.value)); });
+        drawPhasor(canvas, Number(slider.value));
+
+        btn.addEventListener('click',()=>{
+          const ang = Number(slider.value);
+          if(Math.abs(ang - t.target) <= t.tol){
+            state.solved[t.id]=true; saveState();
+            msg.textContent = '✅ Správne!'; msg.className='note right';
+            slider.disabled=true; btn.disabled=true; drawPhasor(canvas, t.target);
+            updateProgress();
+          } else {
+            msg.textContent = `❌ Ešte nie. Skús ±${t.tol}° okolo správnej hodnoty. Nápoveda: ${t.hint}`;
+            msg.className='note wrong';
+          }
+        });
+      } else {
+        const inp = el('input',{type:t.input||'text', placeholder:t.placeholder||''});
+        const btn = el('button',{id:`btn-${t.id}`}, 'Skontrolovať');
+        const msg = el('p',{class:'note', id:`msg-${t.id}`}, '');
+        if(solved){ inp.value = load(STATE_KEY, state).solvedVals?.[t.id] ?? ''; inp.disabled=true; btn.disabled=true; msg.textContent='✅ Správne!'; msg.className='note right'; }
+        card.append(inp, btn, msg);
+
+        btn.addEventListener('click',()=>{
+          const val = inp.value.trim().replace(',', '.');
+          if(!val){ msg.textContent='Zadaj odpoveď.'; msg.className='note'; return; }
+          const ok = t.solve(Number(val));
+          if(ok){
+            state.solved[t.id]=true; state.solvedVals = state.solvedVals||{}; state.solvedVals[t.id]=val; saveState();
+            msg.textContent='✅ Správne!'; msg.className='note right'; inp.disabled=true; btn.disabled=true; updateProgress();
+          } else {
+            msg.textContent = `❌ Nesprávne. Nápoveda: ${t.hint}`; msg.className='note wrong';
+          }
+        });
+      }
+
+      tasksWrap.append(card);
+    });
+
+    updateProgress();
+  }
+
+  function drawPhasor(canvas, deg){
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width = canvas.clientWidth; const h = canvas.height = canvas.clientHeight;
+    const cx = w/2, cy = h*0.75; const r = Math.min(w, h)*0.35;
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle = '#284064'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(20,cy); ctx.lineTo(w-20,cy); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.strokeStyle='#22314d'; ctx.stroke();
+    ctx.strokeStyle = '#22c55e'; ctx.fillStyle = '#22c55e';
+    arrow(ctx, cx, cy, cx+r, cy);
+    ctx.fillText('I (0°)', cx+r+6, cy+4);
+    const rad = deg*Math.PI/180; const ux = cx + r*Math.cos(rad); const uy = cy - r*Math.sin(rad);
+    ctx.strokeStyle = '#5b9cff'; ctx.fillStyle = '#5b9cff';
+    arrow(ctx, cx, cy, ux, uy);
+    ctx.fillText(`U (${deg.toFixed(1)}°)`, ux+6, uy+4);
+  }
+
+  function arrow(ctx, x1,y1,x2,y2){
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    const ang = Math.atan2(y2-y1, x2-x1); const len=10;
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-len*Math.cos(ang-Math.PI/6), y2-len*Math.sin(ang-M.PI/6));
+    ctx.lineTo(x2-len*Math.cos(ang+Math.PI/6), y2-len*Math.sin(ang+Math.PI/6));
+    ctx.closePath(); ctx.fill();
+  }
+
+  // ====================== Navigácia ================================
+  document.getElementById('btnStart').addEventListener('click',()=>{
+    const name = document.getElementById('player').value.trim();
+    if(!name){ document.getElementById('msgStart').textContent='Zadaj aspoň prezývku.'; return; }
+    state.name=name; if(!state.startAt) state.startAt=Date.now(); saveState();
+    document.getElementById('who').textContent = state.name;
+    document.getElementById('screen-welcome').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+    renderTasks(); startTimer();
+  });
+
+  document.getElementById('btnBack').addEventListener('click',()=>{
+    document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('screen-welcome').classList.remove('hidden');
+    stopTimer();
+  });
+
+  document.getElementById('btnResetAll').addEventListener('click',()=>{
+    if(confirm('Vymazať uložený postup?')){ localStorage.removeItem(STATE_KEY); location.reload(); }
+  });
+
+  if(state?.name){
+    document.getElementById('player').value = state.name;
+    document.getElementById('who').textContent = state.name;
+    document.getElementById('screen-welcome').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+    renderTasks(); startTimer();
+  }
+
+  </script>
+</body>
+</html>
+
