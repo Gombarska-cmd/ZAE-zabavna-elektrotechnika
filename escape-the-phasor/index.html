@@ -5,7 +5,7 @@ escape-the-phasor/
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Escape the Phasor – školská úniková hra</title>
+  <title>Escape the Phasor – školská úniková hra (fix)</title>
   <meta name="robots" content="noindex,nofollow" />
   <style>
     :root{--bg:#0b1020;--card:#0e1628;--edge:#1f2a44;--txt:#e5e7eb;--muted:#9aa4b2;--acc:#5b9cff;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444}
@@ -34,7 +34,7 @@ escape-the-phasor/
     .grid{display:grid;gap:18px}
     .task{border:1px dashed var(--edge);border-radius:14px;padding:16px;background:rgba(8,13,26,.6)}
     .task h3{margin:0 0 8px}
-    .note{font-size:13px;color:#9fb0c3}
+    .note{font-size:13px;color:#9aa4b2}
     .right{color:#22c55e}
     .wrong{color:#ef4444}
     .center{text-align:center}
@@ -163,15 +163,20 @@ escape-the-phasor/
         const msg = el('p',{class:'note', id:`msg-${t.id}`}, '');
         card.append(canvas, slider, out, btn, msg);
 
-        slider.addEventListener('input',()=>{ document.querySelector(`#ang-${t.id}`).textContent = slider.value; drawPhasor(canvas, Number(slider.value)); });
-        drawPhasor(canvas, Number(slider.value));
+        try { drawPhasor(canvas, Number(slider.value)); } catch(e) { console.warn('Kreslenie zlyhalo:', e); }
+
+        slider.addEventListener('input',()=>{
+          document.querySelector(`#ang-${t.id}`).textContent = slider.value;
+          try { drawPhasor(canvas, Number(slider.value)); } catch(e) { /* ignore */ }
+        });
 
         btn.addEventListener('click',()=>{
           const ang = Number(slider.value);
           if(Math.abs(ang - t.target) <= t.tol){
             state.solved[t.id]=true; saveState();
             msg.textContent = '✅ Správne!'; msg.className='note right';
-            slider.disabled=true; btn.disabled=true; drawPhasor(canvas, t.target);
+            slider.disabled=true; btn.disabled=true;
+            try { drawPhasor(canvas, t.target); } catch(e) { /* ignore */ }
             updateProgress();
           } else {
             msg.textContent = `❌ Ešte nie. Skús ±${t.tol}° okolo správnej hodnoty. Nápoveda: ${t.hint}`;
@@ -211,9 +216,11 @@ escape-the-phasor/
     ctx.clearRect(0,0,w,h);
     ctx.strokeStyle = '#284064'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(20,cy); ctx.lineTo(w-20,cy); ctx.stroke();
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.strokeStyle='#22314d'; ctx.stroke();
+    // prúd I (0°)
     ctx.strokeStyle = '#22c55e'; ctx.fillStyle = '#22c55e';
     arrow(ctx, cx, cy, cx+r, cy);
     ctx.fillText('I (0°)', cx+r+6, cy+4);
+    // napätie U (deg)
     const rad = deg*Math.PI/180; const ux = cx + r*Math.cos(rad); const uy = cy - r*Math.sin(rad);
     ctx.strokeStyle = '#5b9cff'; ctx.fillStyle = '#5b9cff';
     arrow(ctx, cx, cy, ux, uy);
@@ -223,9 +230,10 @@ escape-the-phasor/
   function arrow(ctx, x1,y1,x2,y2){
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
     const ang = Math.atan2(y2-y1, x2-x1); const len=10;
+    // FIX: správne použitie Math.PI
     ctx.beginPath();
     ctx.moveTo(x2,y2);
-    ctx.lineTo(x2-len*Math.cos(ang-Math.PI/6), y2-len*Math.sin(ang-M.PI/6));
+    ctx.lineTo(x2-len*Math.cos(ang-Math.PI/6), y2-len*Math.sin(ang-Math.PI/6));
     ctx.lineTo(x2-len*Math.cos(ang+Math.PI/6), y2-len*Math.sin(ang+Math.PI/6));
     ctx.closePath(); ctx.fill();
   }
@@ -258,8 +266,6 @@ escape-the-phasor/
     document.getElementById('screen-game').classList.remove('hidden');
     renderTasks(); startTimer();
   }
-
   </script>
 </body>
 </html>
-
