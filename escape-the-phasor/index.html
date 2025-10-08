@@ -5,17 +5,20 @@ escape-the-phasor/
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Escape the Phasor – školská úniková hra (v4 – s pozadím)</title>
+  <title>Escape the Phasor – školská úniková hra (v5 – pevné pozadia, silnejšie rozjasnenie)</title>
   <meta name="robots" content="noindex,nofollow" />
   <style>
-    :root{ --txt:#e5e7eb; --muted:#9aa4b2; --acc:#5b9cff; --edge:#1f2a44; --overlay: 0.60; }
+    :root{ --txt:#e5e7eb; --muted:#9aa4b2; --acc:#5b9cff; --edge:#1f2a44;
+           --bri:0.60; --con:1.00; }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{ margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; color:var(--txt); background:#0b1020; }
     .bg{ position:fixed; inset:0; z-index:-2; background-position:center; background-size:cover; background-attachment:fixed;
-          transition: filter .6s ease, opacity .6s ease, background-image .4s ease-in-out;
-          filter:brightness(calc(1 - var(--overlay))); }
-    .bg::after{ content:''; position:absolute; inset:0; background:radial-gradient(1200px 800px at 20% 0%, rgba(14,24,48,.6), rgba(11,16,32,.9)); z-index:-1; pointer-events:none; }
+         transition: filter .7s ease, opacity .6s ease, background-image .4s ease-in-out;
+         filter:brightness(var(--bri)) contrast(var(--con)); }
+    .bg::after{ content:''; position:absolute; inset:0;
+      background:radial-gradient(1100px 720px at 20% 0%, rgba(14,24,48,.6), rgba(11,16,32,.85));
+      z-index:-1; pointer-events:none; }
     .wrap{max-width:1000px;margin:0 auto;padding:24px}
     .card{background:linear-gradient(180deg,rgba(18,27,48,.88),rgba(11,16,32,.88));border:1px solid var(--edge);border-radius:18px;padding:22px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
     h1{margin:0 0 8px;font-size:clamp(22px,3.2vw,36px)}
@@ -24,8 +27,8 @@ escape-the-phasor/
     .row{display:grid;gap:18px}
     @media (min-width:860px){.row{grid-template-columns:1fr 1fr}}
     label{display:block;margin:10px 0 6px}
-    input,button,select{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--edge);background:#0a1222;color:#e5e7eb}
-    input:focus,select:focus,button:focus{outline:2px solid var(--acc)}
+    input,button{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--edge);background:#0a1222;color:#e5e7eb}
+    input:focus,button:focus{outline:2px solid var(--acc)}
     button{background:var(--acc);border-color:var(--acc);font-weight:700;cursor:pointer}
     button.secondary{background:transparent;border-color:var(--edge)}
     button:disabled{opacity:.6;cursor:not-allowed}
@@ -51,7 +54,7 @@ escape-the-phasor/
   <div class="wrap">
     <section class="card" id="screen-welcome">
       <h1>Escape the Phasor</h1>
-      <p>10 úloh v 3 etapách. Pozadie laboratória sa s postupom rozjasní.</p>
+      <p>10 úloh v 3 etapách. Pozadie laboratória sa s postupom výrazne rozjasní.</p>
       <div class="row">
         <div>
           <label for="player">Meno / prezývka</label>
@@ -60,15 +63,7 @@ escape-the-phasor/
           <p id="msgStart" class="note"></p>
         </div>
         <div>
-          <p class="note">Pozadie je už zabudované. (Stále môžeš nahrať vlastné.)</p>
-          <div class="row">
-            <div><label>Etapa 1</label><input id="bg1" type="file" accept="image/*"></div>
-            <div><label>Etapa 2</label><input id="bg2" type="file" accept="image/*"></div>
-          </div>
-          <div class="row">
-            <div><label>Etapa 3</label><input id="bg3" type="file" accept="image/*"></div>
-            <div><label>Finále</label><input id="bgF" type="file" accept="image/*"></div>
-          </div>
+          <p class="note">Táto verzia používa <b>pevné zabudované pozadia</b> (bez možnosti nahrávania vlastných).</p>
           <button id="btnResetAll" class="secondary">Vymazať uložený postup</button>
         </div>
       </div>
@@ -133,35 +128,42 @@ escape-the-phasor/
       type:'phasor', target: Math.atan2(20,40)*180/Math.PI, tol:2, hint:'φ = arctan((X_L − X_C)/R). Kladné → U vedie I.' }
   ];
 
-  const STATE_KEY = 'phasor-escape-state-v4';
-  let state = load(STATE_KEY, { name:'', startAt:0, solved:{}, savedVals:{}, stage:1, bg:{s1:BG_DEFAULTS.s1,s2:BG_DEFAULTS.s2,s3:BG_DEFAULTS.s3,fin:BG_DEFAULTS.fin} });
+  const STATE_KEY = 'phasor-escape-state-v5';
+  let state = load(STATE_KEY, { name:'', startAt:0, solved:{}, savedVals:{}, stage:1 });
 
   let tHandle=null;
   function startTimer(){ clearInterval(tHandle); tHandle = setInterval(()=>{ const now=Date.now(); if(!state.startAt) state.startAt=now; $('#timer').textContent = fmtTime(now - state.startAt); }, 250); }
   function stopTimer(){ clearInterval(tHandle); }
   function updateProgress(){ const done = Object.keys(state.solved).filter(k=> state.solved[k]).length; const pct = Math.round(100*done/TASKS.length); $('#bar').style.width = pct+'%'; }
 
-  function applyStageBg(){
-    const bg = $('#bg');
-    let url = state.bg.s1; let overlay = 0.60;
-    if(state.stage===2){ url = state.bg.s2 || state.bg.s1; overlay = 0.35; }
-    if(state.stage===3){ url = state.bg.s3 || state.bg.s2 || state.bg.s1; overlay = 0.10; }
-    if($('#finish').classList.contains('hidden')===false){ url = state.bg.fin || url; overlay = 0.00; }
+  function setBg(url, bri, con){
+    const bg = document.getElementById('bg');
     bg.style.backgroundImage = `url(${url})`;
-    document.documentElement.style.setProperty('--overlay', overlay.toString());
-    $('#stageNum').textContent = state.stage;
-    $('#stageBadge').textContent = (state.stage<3?'🔒 Najprv dokonči aktuálnu etapu':'🔒 Finálny zámok – nastav fázu');
+    document.documentElement.style.setProperty('--bri', String(bri));
+    document.documentElement.style.setProperty('--con', String(con));
+  }
+
+  function applyStageBg(){
+    if(document.getElementById('finish').classList.contains('hidden')===false){
+      setBg('bg_final.jpg', 1.35, 1.08); return;
+    }
+    if(state.stage===1){ setBg('bg_stage1.jpg', 0.58, 1.02); }
+    if(state.stage===2){ setBg('bg_stage2.jpg', 0.90, 1.05); }
+    if(state.stage===3){ setBg('bg_stage3.jpg', 1.20, 1.07); }
+    document.getElementById('stageNum').textContent = state.stage;
+    document.getElementById('stageBadge').textContent = (state.stage<3?'🔒 Najprv dokonči aktuálnu etapu':'🔒 Finálny zámok – nastav fázu');
   }
 
   function nextStageIfReady(){
     const need = state.stage===1 ? 5 : (state.stage===2 ? 9 : 10);
     const done = Object.keys(state.solved).filter(k=> state.solved[k]).length;
     if(done>=need && state.stage<3){ state.stage += 1; save(STATE_KEY,state); renderTasks(true); }
-    if(done===10){ $('#finish').classList.remove('hidden'); $('#finalTime').textContent = fmtTime(Date.now()-state.startAt); applyStageBg(); }
+    if(done===10){ document.getElementById('finish').classList.remove('hidden'); document.getElementById('finalTime').textContent = fmtTime(Date.now()-state.startAt); applyStageBg(); }
   }
 
   function renderTasks(scrollTop=false){
-    $('#tasks').innerHTML='';
+    const container = document.getElementById('tasks');
+    container.innerHTML='';
     const nowStage = state.stage;
     TASKS.filter(t=> t.stage===nowStage).forEach((t)=>{
       const card = el('div',{class:'task fade', id:`task-${t.id}`});
@@ -253,11 +255,11 @@ escape-the-phasor/
         });
       }
 
-      $('#tasks').append(card);
+      container.append(card);
     });
 
     const allDone = Object.keys(state.solved).filter(k=> state.solved[k]).length === TASKS.length;
-    $('#finish').classList.toggle('hidden', !allDone);
+    document.getElementById('finish').classList.toggle('hidden', !allDone);
     applyStageBg();
     if(scrollTop) window.scrollTo({top:0, behavior:'smooth'});
     updateProgress();
@@ -285,14 +287,6 @@ escape-the-phasor/
     ctx.closePath(); ctx.fill();
   }
 
-  function bindBgInput(inp, key){
-    inp.addEventListener('change', ()=>{
-      const file = inp.files?.[0]; if(!file) return;
-      const url = URL.createObjectURL(file);
-      state.bg[key] = url; save(STATE_KEY,state); applyStageBg();
-    });
-  }
-
   document.getElementById('btnStart').addEventListener('click',()=>{
     const name = document.getElementById('player').value.trim();
     if(!name){ document.getElementById('msgStart').textContent='Zadaj aspoň prezývku.'; return; }
@@ -310,11 +304,6 @@ escape-the-phasor/
   document.getElementById('btnResetAll').addEventListener('click',()=>{
     if(confirm('Vymazať uložený postup?')){ localStorage.removeItem(STATE_KEY); location.reload(); }
   });
-
-  bindBgInput(document.getElementById('bg1'), 's1');
-  bindBgInput(document.getElementById('bg2'), 's2');
-  bindBgInput(document.getElementById('bg3'), 's3');
-  bindBgInput(document.getElementById('bgF'), 'fin');
 
   const persisted = load(STATE_KEY, null);
   if(persisted?.name){
