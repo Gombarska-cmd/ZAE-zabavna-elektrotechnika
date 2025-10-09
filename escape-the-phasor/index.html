@@ -117,14 +117,14 @@ escape-the-phasor/
     { id:'u8', stage:2, title:'Impedancia Z', text:'R = 40 Ω, X_L = 30 Ω, X_C = 10 Ω → Z? (Ω)', input:'number', placeholder:'napr. 12.3', tol:0.5, solve:(v)=> nearly(v, Math.sqrt(40**2 + (30-10)**2), 0.5), hint:'Z = √(R² + (X_L−X_C)²).' },
 
     { id:'u9', stage:2, title:'Ohmov zákon pre AC – fázory',
-      text:'I = 2 A s φ_I = −10°. R=40 Ω, X_L=30 Ω, X_C=10 Ω. Urči fázor U = I·Z. Zadaj |U| (V) a φ_U (°).',
+      text:'I = 2 A s φ_I = −10°. R=40 Ω, X_L=30 Ω, X_C=10 Ω. Urči fázor U = I·Z. Zadaj |U| (V) a ψ_U (°).',
       type:'phasorSolve', magPlaceholder:'napr. 12.3', angPlaceholder:'napr. 12.3',
       magTol:0.7, angTol:1.0,
       magTarget: 2*Math.sqrt(40*40 + (30-10)*(30-10)),
       angTarget: (-10) + Math.atan2(30-10,40)*180/Math.PI,
       hint:'|U| = I·|Z|, φ_U = φ_I + φ_Z, pričom φ_Z = arctan((X_L−X_C)/R).' },
 
-    { id:'u10', stage:3, title:'Fázor – nastavenie', text:'Pre sériový RLC s R = 40 Ω a X = (X_L−X_C) = 20 Ω nastav fázový posun medzi U a I (°).',
+    { id:'u10', stage:3, title:'Fázor – nastavenie', text:'Pre sériový RLC s R = 40 Ω a X = (X_L−X_C) = 20 Ω nastav posuvníkom fázový posun medzi U a I (°).',
       type:'phasor', target: Math.atan2(20,40)*180/Math.PI, tol:2, hint:'φ = arctan((X_L − X_C)/R). Kladné → U vedie I.' }
   ];
 
